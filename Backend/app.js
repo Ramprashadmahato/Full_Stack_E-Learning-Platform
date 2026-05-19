@@ -1,59 +1,115 @@
-const express = require("express");
-const dotenv = require("dotenv");
-const connectDB = require("./src/Db/config");
-const authRoutes = require("./src/routes/authRoutes");
-const userRoutes = require("./src/routes/userRoutes");
-const opportunityRoutes = require("./src/routes/opportunityRoutes");
-const SubmissionRoutes = require("./src/routes/submissionRoutes");
-const notificationRoutes = require("./src/routes/notificationRoutes");
+require("dotenv").config();
 
+const express = require("express");
 const cors = require("cors");
 const http = require("http");
 const { Server } = require("socket.io");
+const path = require("path");
 
-dotenv.config();
+// Database
+const connectDB = require("./src/Db/config");
 
-// Initialize express app
+// Routes
+const authRoutes = require("./src/routes/authRoutes");
+const userRoutes = require("./src/routes/userRoutes");
+const opportunityRoutes = require("./src/routes/opportunityRoutes");
+const submissionRoutes = require("./src/routes/submissionRoutes");
+const notificationRoutes = require("./src/routes/notificationRoutes");
+
+// Initialize app
 const app = express();
 
-// Create an HTTP server using express
+// Create HTTP server
 const server = http.createServer(app);
 
-// Initialize Socket.IO with CORS settings
+// ======================
+// Socket.IO Setup
+// ======================
 const io = new Server(server, {
   cors: {
-    origin: process.env.FRONTEND_URL || "http://localhost:5173",  // Allow frontend to connect from this origin
-    methods: ["GET", "POST"],
+    origin: process.env.FRONTEND_URL || "http://localhost:5173",
+    methods: ["GET", "POST", "PUT", "DELETE"],
+    credentials: true,
   },
 });
 
+// ======================
+// Middleware
+// ======================
 app.use(express.json());
-app.use(cors());
 
-// Connect to the database
+app.use(
+  cors({
+    origin: process.env.FRONTEND_URL || "http://localhost:5173",
+    credentials: true,
+  })
+);
+
+// ======================
+// Database Connection
+// ======================
 connectDB();
 
-// Pass io instance to the routes
+// ======================
+// Root Route (IMPORTANT)
+// ======================
+app.get("/", (req, res) => {
+  res.status(200).json({
+    success: true,
+    message: "E-Learning Platform Backend Running Successfully",
+  });
+});
+
+// ======================
+// Pass io to Routes
+// ======================
 app.use((req, res, next) => {
-  req.io = io; // Add io to the request object
+  req.io = io;
   next();
 });
 
-// Modular routes
+// ======================
+// API Routes
+// ======================
 app.use("/api/auth", authRoutes);
 app.use("/api/users", userRoutes);
 app.use("/api/opportunities", opportunityRoutes);
-app.use("/api/submissions", SubmissionRoutes);
-app.use("/api/notifications", notificationRoutes); // Notifications with socket support
+app.use("/api/submissions", submissionRoutes);
+app.use("/api/notifications", notificationRoutes);
 
-// Static files
-app.use("/uploads", express.static("Public/uploads"));
+// ======================
+// Static Folder
+// ======================
+app.use("/uploads", express.static(path.join(__dirname, "Public/uploads")));
 
-// Error handling middleware
-app.use((err, req, res, next) => {
-  res.status(err.status || 300).json({ message: err.message || "Server Error" });
+// ======================
+// Socket Connection
+// ======================
+io.on("connection", (socket) => {
+  console.log("User Connected:", socket.id);
+
+  socket.on("disconnect", () => {
+    console.log("User Disconnected:", socket.id);
+  });
 });
 
-// Start the server with Socket.IO on the same port (3000)
+// ======================
+// Error Middleware
+// ======================
+app.use((err, req, res, next) => {
+  console.error(err);
+
+  res.status(err.status || 500).json({
+    success: false,
+    message: err.message || "Internal Server Error",
+  });
+});
+
+// ======================
+// Server Start
+// ======================
 const PORT = process.env.PORT || 3000;
-server.listen(PORT, () => console.log(`Server is running on http://localhost:${PORT}`));
+
+server.listen(PORT, () => {
+  console.log(`Server running on port ${PORT}`);
+});
