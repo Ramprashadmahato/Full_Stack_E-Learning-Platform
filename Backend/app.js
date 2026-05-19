@@ -16,46 +16,65 @@ const opportunityRoutes = require("./src/routes/opportunityRoutes");
 const submissionRoutes = require("./src/routes/submissionRoutes");
 const notificationRoutes = require("./src/routes/notificationRoutes");
 
-// Initialize app
+// Initialize App
 const app = express();
 
-// Create HTTP server
+// Create HTTP Server
 const server = http.createServer(app);
 
-// ======================
+// ======================================
+// Allowed Frontend Origins
+// ======================================
+const allowedOrigins = [
+  "http://localhost:5173",
+  "https://full-stack-e-learning-platform-opal.vercel.app",
+];
+
+// ======================================
+// Middleware
+// ======================================
+app.use(express.json());
+
+// ======================================
+// CORS Setup
+// ======================================
+app.use(
+  cors({
+    origin: function (origin, callback) {
+      // Allow requests with no origin
+      if (!origin) return callback(null, true);
+
+      if (allowedOrigins.includes(origin)) {
+        return callback(null, true);
+      } else {
+        return callback(new Error("CORS Not Allowed"));
+      }
+    },
+    credentials: true,
+    methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
+    allowedHeaders: ["Content-Type", "Authorization"],
+  })
+);
+
+// ======================================
 // Socket.IO Setup
-// ======================
+// ======================================
 const io = new Server(server, {
   cors: {
-    origin: [
-      "http://localhost:5173",
-      "https://full-stack-e-learning-platform-opal.vercel.app",
-    ],
+    origin: allowedOrigins,
     methods: ["GET", "POST", "PUT", "DELETE"],
     credentials: true,
   },
 });
 
-// ======================
-// Middleware
-// ======================
-app.use(express.json());
-
-app.use(
-  cors({
-    origin: process.env.FRONTEND_URL || "http://localhost:5173",
-    credentials: true,
-  })
-);
-
-// ======================
+// ======================================
 // Database Connection
-// ======================
+// ======================================
 connectDB();
 
-// ======================
-// Root Route (IMPORTANT)
-// ======================
+// ======================================
+// Root Route
+// ======================================
 app.get("/", (req, res) => {
   res.status(200).json({
     success: true,
@@ -63,31 +82,34 @@ app.get("/", (req, res) => {
   });
 });
 
-// ======================
-// Pass io to Routes
-// ======================
+// ======================================
+// Pass Socket.IO to Routes
+// ======================================
 app.use((req, res, next) => {
   req.io = io;
   next();
 });
 
-// ======================
+// ======================================
 // API Routes
-// ======================
+// ======================================
 app.use("/api/auth", authRoutes);
 app.use("/api/users", userRoutes);
 app.use("/api/opportunities", opportunityRoutes);
 app.use("/api/submissions", submissionRoutes);
 app.use("/api/notifications", notificationRoutes);
 
-// ======================
-// Static Folder
-// ======================
-app.use("/uploads", express.static(path.join(__dirname, "Public/uploads")));
+// ======================================
+// Static Files
+// ======================================
+app.use(
+  "/uploads",
+  express.static(path.join(__dirname, "Public/uploads"))
+);
 
-// ======================
+// ======================================
 // Socket Connection
-// ======================
+// ======================================
 io.on("connection", (socket) => {
   console.log("User Connected:", socket.id);
 
@@ -96,9 +118,9 @@ io.on("connection", (socket) => {
   });
 });
 
-// ======================
-// Error Middleware
-// ======================
+// ======================================
+// Error Handling Middleware
+// ======================================
 app.use((err, req, res, next) => {
   console.error(err);
 
@@ -108,9 +130,9 @@ app.use((err, req, res, next) => {
   });
 });
 
-// ======================
-// Server Start
-// ======================
+// ======================================
+// Start Server
+// ======================================
 const PORT = process.env.PORT || 3000;
 
 server.listen(PORT, () => {
