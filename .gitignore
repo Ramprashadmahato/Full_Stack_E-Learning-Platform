@@ -1,0 +1,26 @@
+# Environments
+.env
+.env.local
+.env.*.local
+
+# Node modules
+node_modules/
+Backend/node_modules/
+Frontend/node_modules/
+
+# Production
+dist/
+build/
+Backend/Public/uploads/*
+!Backend/Public/uploads/.gitkeep
+
+# Logs
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# Misc
+.DS_Store
+.vscode/
+.antigravity/
+Troubleshooting_and_Changes.md
